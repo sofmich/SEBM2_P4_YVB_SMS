@@ -12,7 +12,6 @@
 #include "fsl_sai_edma.h"
 
 #define DEMO_CODEC_DA7212
-#define DEMO_SAI              I2S0
 #define DEMO_SAI_CHANNEL      (0)
 #define DEMO_SAI_CLKSRC       kCLOCK_CoreSysClk
 #define DEMO_SAI_CLK_FREQ     CLOCK_GetFreq(kCLOCK_CoreSysClk)

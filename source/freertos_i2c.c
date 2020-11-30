@@ -48,9 +48,9 @@ freertos_i2c_flag_t freertos_i2c_init(freertos_i2c_config_t config)
 			//PORT_SetPinMux(freertos_i2c_get_port_base(config.port), config.sda_pin, config.pin_mux);
 
 		    const port_pin_config_t portb2_pinG12_config = {/* Internal pull-up resistor is enabled */
-		    		kPORT_PullDisable,
+		    												kPORT_PullUp,
 		                                                    /* Fast slew rate is configured */
-		                                                    kPORT_FastSlewRate,
+		                                                    kPORT_SlowSlewRate,
 		                                                    /* Passive filter is disabled */
 		                                                    kPORT_PassiveFilterDisable,
 		                                                    /* Open drain is enabled */
@@ -58,16 +58,16 @@ freertos_i2c_flag_t freertos_i2c_init(freertos_i2c_config_t config)
 		                                                    /* Low drive strength is configured */
 		                                                    kPORT_LowDriveStrength,
 		                                                    /* Pin is configured as I2C0_SCL */
-		                                                    kPORT_MuxAlt2,
+		                                                    kPORT_MuxAlt5,
 		                                                    /* Pin Control Register fields [15:0] are not locked */
 		                                                    kPORT_UnlockRegister};
 		    /* PORTB2 (pin G12) is configured as I2C0_SCL */
-		    PORT_SetPinConfig(PORTB, 2U, &portb2_pinG12_config);
+		    PORT_SetPinConfig(PORTE, 24U, &portb2_pinG12_config);
 
 		    const port_pin_config_t portb3_pinG11_config = {/* Internal pull-up resistor is enabled */
-		    		kPORT_PullDisable,
+		    												kPORT_PullUp,
 		                                                    /* Fast slew rate is configured */
-		                                                    kPORT_FastSlewRate,
+															kPORT_SlowSlewRate,
 		                                                    /* Passive filter is disabled */
 		                                                    kPORT_PassiveFilterDisable,
 		                                                    /* Open drain is enabled */
@@ -75,11 +75,11 @@ freertos_i2c_flag_t freertos_i2c_init(freertos_i2c_config_t config)
 		                                                    /* Low drive strength is configured */
 		                                                    kPORT_LowDriveStrength,
 		                                                    /* Pin is configured as I2C0_SDA */
-		                                                    kPORT_MuxAlt2,
+		                                                    kPORT_MuxAlt5,
 		                                                    /* Pin Control Register fields [15:0] are not locked */
 		                                                    kPORT_UnlockRegister};
 		    /* PORTB3 (pin G11) is configured as I2C0_SDA */
-		    PORT_SetPinConfig(PORTB, 3U, &portb3_pinG11_config);
+		    PORT_SetPinConfig(PORTE, 25U, &portb3_pinG11_config);
 
 			I2C_MasterGetDefaultConfig(&fsl_i2c_master_config);
 			fsl_i2c_master_config.baudRate_Bps = config.baudrate;
