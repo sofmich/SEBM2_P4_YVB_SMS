@@ -32,8 +32,7 @@ const char * disable_BP ="BPD";
 static uint32_t Buffer[4 * 1024];
 static uint32_t rxBuffer = 0;
 static char filter_data[DATA_SIZE];
-
-void init_uart(void);
+static uart_config_t config;
 
 void init_codec(void *parameters)
 {
@@ -46,8 +45,9 @@ void init_codec(void *parameters)
 	wm8731_i2s_config();
 	//wm8731_Activate();
 	init_Buffer(&Buffer[0]);
-	init_uart();
+
 	xSemaphoreGive(i2c_sem);
+
 	vTaskSuspend(NULL);
 }
 
@@ -57,7 +57,6 @@ void codec_audio(void *parameters)
 
 	for(;;)
 	{
-		/*TODO AUDIO FUNCTIONS*/
 		wm8731_getData((uint8_t*) (Buffer+rxBuffer), 1024);
 		rxBuffer++;
 		if(rxBuffer>= 4)
@@ -68,44 +67,49 @@ void codec_audio(void *parameters)
 	}
 }
 
-void init_uart(void)
+void init_uart(void *parameters)
 {
-	static uart_config_t config;
+	uint8_t txbuff[] = "Codec audio practice 4\r\nChoose your filter\r\n\r\nLow pass (LP)\n\rHigh pass (HP)\n\rBand Pass (BP)\r\n";
+	uint8_t index;
+	uint8_t ch;
+
 	UART_GetDefaultConfig(&config);
+
 	config.baudRate_Bps = 115200;
 	config.enableTx     = true;
 	config.enableRx     = true;
 
 	UART_Init(DEMO_UART, &config, DEMO_UART_CLK_FREQ);
-
-	uint8_t txbuff[]   = "Codec audio practice 4\r\nChoose your filter\r\n\r\nLow pass (LP)\n\rHigh pass (HP)\n\rBand Pass (BP)\r\n";
 	UART_WriteBlocking(DEMO_UART, txbuff, sizeof(txbuff) - 1);
 
-	/* Tomar datos de la uart*/
-	uint8_t index = 0;
-	uint8_t ch;
-	do{
-		UART_ReadBlocking(DEMO_UART, &ch, 1);
-		UART_WriteBlocking(DEMO_UART,&ch, 1);
-		filter_data[index] = ch;
-		index++;
-	} while(3 > DATA_SIZE);
+	while(1)
+	{
+		index = 0;
+		/* Tomar datos de la uart*/
+		do{
+			UART_ReadBlocking(DEMO_UART, &ch, 1);
+			UART_WriteBlocking(DEMO_UART,&ch, 1);
+			filter_data[index] = ch;
+			index++;
+		} while(3 > DATA_SIZE);
 
-	if(strcmp(enable_LP,filter_data))
-	{
-		do_filter(LP);
-	}
-	else if(strcmp(enable_HP,filter_data))
-	{
-		do_filter(HP);
-	}
-	else if(strcmp(enable_BP,filter_data))
-	{
-		do_filter(BP);
-	}
-	else if(strcmp(disable_LP,filter_data) || strcmp(disable_HP,filter_data) || strcmp(disable_BP,filter_data))
-	{
-		do_filter(DISABLE);
+		if(strcmp(enable_LP,filter_data))
+		{
+			do_filter(LP);
+		}
+		else if(strcmp(enable_HP,filter_data))
+		{
+			do_filter(HP);
+		}
+		else if(strcmp(enable_BP,filter_data))
+		{
+			do_filter(BP);
+		}
+		else if(strcmp(disable_LP,filter_data) || strcmp(disable_HP,filter_data) || strcmp(disable_BP,filter_data))
+		{
+			do_filter(DISABLE);
+		}
+		UART_WriteBlocking(DEMO_UART,"\r   \r", 5);
 	}
 
 }
@@ -123,10 +127,9 @@ int main(void)
 
 	i2c_sem = xSemaphoreCreateBinary();
 
-	init_uart();
-
 	xTaskCreate(init_codec, "init_codec", 110, NULL, 1, NULL);
 	xTaskCreate(codec_audio, "codec_audio", 110, NULL, 1, NULL);
+	xTaskCreate(init_uart, "init_uart", 110, NULL, 1, NULL);
 
 	vTaskStartScheduler();
 
