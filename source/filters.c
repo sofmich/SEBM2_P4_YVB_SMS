@@ -1,20 +1,8 @@
-/*
- * filters.c
- *
- *  Created on: Nov 30, 2020
- *      Author: Momo
- */
-
 #include "filters.h"
-#define NUM_TAPS 50
-#define BLOCK_SIZE 1024
-#define TEST_LENGTH_SAMPLES 4*1024
-
 
 arm_fir_instance_f32 S[3];
 static float32_t sysOutput[TEST_LENGTH_SAMPLES];
 static float32_t firStateF32[3][BLOCK_SIZE + NUM_TAPS -1];
-
 /* MATLAB calculated coefficients */
 const float32_t LP_Coeffs32[NUM_TAPS] =
 {
@@ -32,6 +20,7 @@ const float32_t LP_Coeffs32[NUM_TAPS] =
 		0.00599162039210969,0.00481525539714661,0.00388627310232782,0.00321245239093617,
 		0.00279637452361145,0.00263546835245304
 };
+
 const float32_t HP_Coeffs32[NUM_TAPS] =
 {
 		-3.76691458426420e-18,-0.000706907267364315,-0.00133663783719985,-0.00161009047137108,
@@ -48,28 +37,46 @@ const float32_t HP_Coeffs32[NUM_TAPS] =
 		-0.00112664805765382,-0.00161009047137108,-0.00133663783719985,-0.000706907267364315,
 		-3.76691458426420e-18
 };
+
 const float32_t BP_Coeffs32[NUM_TAPS] =
 {
-	0
+		-0.000857355230901581,-0.000204843792924218,0.000284151533388043,0.000330066195956569,
+		-0.000466271446902651,-0.00237069365978988,-0.00514498086675885,-0.00783013932713607,
+		-0.00895517281185663,-0.00723792013001174,-0.00252055578617604,0.00357686421436148,
+		0.00781154834785777,0.00649814937221832,-0.00259533659306915,-0.0184342058478405,
+		-0.0359566056833580,-0.0470348930879685,-0.0431228290049159,-0.0187362137818495,
+		0.0256241168708554,0.0824599158744762,0.138862634797902,0.180346156897093,
+		0.195596419700235,0.180346156897093,0.138862634797902,0.0824599158744762,
+		0.0256241168708554,-0.0187362137818495,-0.0431228290049159,-0.0470348930879685,
+		-0.0359566056833580,-0.0184342058478405,-0.00259533659306915,0.00649814937221832,
+		0.00781154834785777,0.00357686421436148,-0.00252055578617604,-0.00723792013001174,
+		-0.00895517281185663,-0.00783013932713607,-0.00514498086675885,-0.00237069365978988,
+		-0.000466271446902651,0.000330066195956569,0.000284151533388043,-0.000204843792924218,
+		-0.000857355230901581
 };
-
 /*Variables for FIR example*/
 uint32_t blockSize = BLOCK_SIZE;
 uint32_t numBlocks = TEST_LENGTH_SAMPLES/BLOCK_SIZE;
 float32_t snr;
 
-void FILR_init_LP(){
+void FILR_init_LP()
+{
 	arm_fir_init_f32(&S[0], NUM_TAPS, (float32_t*)&LP_Coeffs32[0], &firStateF32[0][0], blockSize);
 }
-void FILR_init_HP(){
+
+void FILR_init_HP()
+{
 	arm_fir_init_f32(&S[1], NUM_TAPS, (float32_t*)&HP_Coeffs32[0], &firStateF32[1][0], blockSize);
 }
-void FILR_init_BP(){
+
+void FILR_init_BP()
+{
 	arm_fir_init_f32(&S[2], NUM_TAPS, (float32_t*)&BP_Coeffs32[0], &firStateF32[2][0], blockSize);
 }
 
 /*Global variables to manage buffers and filters*/
 float32_t *input32, *output32;
+
 void init_Buffer(uint32_t *Buffer)
 {
 	input32 = (float32_t*)Buffer;
@@ -78,26 +85,39 @@ void init_Buffer(uint32_t *Buffer)
 	FILR_init_HP();
 	FILR_init_BP();
 }
-void do_filter(uint8_t Type)
-{
 
-	switch(Type){
-	case 0:
+void do_filter(filter type)
+{
+	int index;
+	switch(type)
+	{
+	case LP:
 		/*LOW PASS*/
-		arm_fir_f32(&S[0], input32 + (4 * blockSize), output32 + (4 * blockSize), blockSize);
+		for(index = 0; NUM_BLOCKS > index; index++)
+		{
+			arm_fir_f32(&S[0], input32 + (index * blockSize), output32 + (index * blockSize), blockSize);
+		}
 		break;
-	case 1:
+	case HP:
 		/* HIGH PASS*/
-		arm_fir_f32(&S[1], input32 + (4 * blockSize), output32 + (4 * blockSize), blockSize);
+		for(index = 0; NUM_BLOCKS > index; index++)
+		{
+			arm_fir_f32(&S[1], input32 + (index * blockSize), output32 + (index * blockSize), blockSize);
+		}
 		break;
-	case 2:
+	case BP:
 		/*BAND PASS*/
-		arm_fir_f32(&S[2], input32 + (4 * blockSize), output32 + (4 * blockSize), blockSize);
+		for(index = 0; NUM_BLOCKS > index; index++)
+		{
+			arm_fir_f32(&S[2], input32 + (index * blockSize), output32 + (index * blockSize), blockSize);
+		}
 		break;
+	case DISABLE:
+		for(index = 0; NUM_BLOCKS > index; index++)
+		{
+			output32[index] = input32[index];
+		}
 	default:
 		break;
 	}
-
-
-
 }

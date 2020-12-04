@@ -17,15 +17,22 @@
 /*
  * @brief   Application entry point.
  */
-
 #define DEMO_UART_CLK_FREQ CLOCK_GetFreq(SYS_CLK)
 #define DEMO_UART          UART0
+#define DATA_SIZE		   3U
 
 SemaphoreHandle_t i2c_sem;
-SemaphoreHandle_t uart_sem;
 
-uint32_t Buffer[4 * 1024];
-uint32_t rxBuffer = 0;
+const char * enable_LP = "LPE";
+const char * disable_LP = "LPD";
+const char * enable_HP = "HPE";
+const char * disable_HP = "HPD";
+const char * enable_BP = "BPE";
+const char * disable_BP ="BPD";
+static uint32_t Buffer[4 * 1024];
+static uint32_t rxBuffer = 0;
+static char filter_data[DATA_SIZE];
+
 void init_uart(void);
 
 void init_codec(void *parameters)
@@ -46,7 +53,6 @@ void init_codec(void *parameters)
 
 void codec_audio(void *parameters)
 {
-
 	xSemaphoreTake(i2c_sem, portMAX_DELAY);
 
 	for(;;)
@@ -54,26 +60,10 @@ void codec_audio(void *parameters)
 		/*TODO AUDIO FUNCTIONS*/
 		wm8731_getData((uint8_t*) (Buffer+rxBuffer), 1024);
 		rxBuffer++;
-			if(rxBuffer>= 4)
-			{
-				rxBuffer = 0U;
-				xSemaphoreGive(uart_sem);
-
-			}
-		vTaskDelay(pdMS_TO_TICKS(300));
-	}
-}
-
-uint8_t *filter_data = 0;
-void uart_inst(void *parameters)
-{
-
-	xSemaphoreTake(uart_sem, portMAX_DELAY);
-
-	for(;;)
-	{
-		/* Tomar datos de la uart*/
-		UART_ReadBlocking(DEMO_UART, filter_data, 3);
+		if(rxBuffer>= 4)
+		{
+			rxBuffer = 0U;
+		}
 		vTaskDelay(pdMS_TO_TICKS(300));
 	}
 }
@@ -92,41 +82,57 @@ void init_uart(void)
 	UART_WriteBlocking(DEMO_UART, txbuff, sizeof(txbuff) - 1);
 
 	/* Tomar datos de la uart*/
-	uint8_t i = 0;
+	uint8_t index = 0;
 	uint8_t ch;
 	do{
 		UART_ReadBlocking(DEMO_UART, &ch, 1);
 		UART_WriteBlocking(DEMO_UART,&ch, 1);
-		*(filter_data+i) = ch;
-		i++;
-	} while(i < 3);
+		filter_data[index] = ch;
+		index++;
+	} while(3 > DATA_SIZE);
+
+	if(strcmp(enable_LP,filter_data))
+	{
+		do_filter(LP);
+	}
+	else if(strcmp(enable_HP,filter_data))
+	{
+		do_filter(HP);
+	}
+	else if(strcmp(enable_BP,filter_data))
+	{
+		do_filter(BP);
+	}
+	else if(strcmp(disable_LP,filter_data) || strcmp(disable_HP,filter_data) || strcmp(disable_BP,filter_data))
+	{
+		do_filter(DISABLE);
+	}
 
 }
 
 int main(void)
 {
-  	/* Init board hardware. */
-    BOARD_InitBootPins();
-    BOARD_InitBootClocks();
-    BOARD_InitBootPeripherals();
+	/* Init board hardware. */
+	BOARD_InitBootPins();
+	BOARD_InitBootClocks();
+	BOARD_InitBootPeripherals();
 #ifndef BOARD_INIT_DEBUG_CONSOLE_PERIPHERAL
-    /* Init FSL debug console. */
-    BOARD_InitDebugConsole();
+	/* Init FSL debug console. */
+	BOARD_InitDebugConsole();
 #endif
 
+	i2c_sem = xSemaphoreCreateBinary();
 
-    i2c_sem = xSemaphoreCreateBinary();
-    uart_sem = xSemaphoreCreateBinary();
+	init_uart();
 
-    xTaskCreate(init_codec, "init_codec", 110, NULL, 1, NULL);
-    xTaskCreate(codec_audio, "codec_audio", 110, NULL, 1, NULL);
-   // xTaskCreate(uart_inst, "uart", 110, NULL, 1, NULL);
+	xTaskCreate(init_codec, "init_codec", 110, NULL, 1, NULL);
+	xTaskCreate(codec_audio, "codec_audio", 110, NULL, 1, NULL);
 
-    vTaskStartScheduler();
+	vTaskStartScheduler();
 
-    while(1)
-    {
+	while(1)
+	{
 
-    }
-    return 0 ;
+	}
+	return 0 ;
 }
